@@ -1,45 +1,38 @@
-version: "3.1"
+version: '3.1'
 
 services:
-
-  elasticsearch:
-    build: elasticsearch/
-    volumes:
-      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+  riemann:
+    build: riemann/
+    networks:
+      - riemann
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "127.0.0.1:5556:5556"
+    restart: always
+
+  riemann_health:
+    build: riemann_health/
+    pid: host
     environment:
-      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
-    networks:
-      - elk
-
-  logstash:
-    build: logstash/
+      - "affinity:container!=*riemannhealth*"
     volumes:
-      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
-      - ./logstash/pipeline:/usr/share/logstash/pipeline
-    ports:
-      - "5000:5000"
-    environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      - "/etc/hostname:/etc/hostname:ro"
     networks:
-      - elk
+      - riemann
     depends_on:
-      - elasticsearch
+      - riemann
 
-  kibana:
-    build: kibana/
-    volumes:
-      - ./kibana/config/:/usr/share/kibana/config
-    ports:
-      - "5601:5601"
+
+  riemann_dash:
+    build: riemann_dash/
     networks:
-      - elk
+      - riemann
+    volumes:
+      - ./riemann_dash/config.rb:/usr/app/riemann_dash/config.rb
+    ports:
+      - "127.0.0.1:4567:4567"
     depends_on:
-      - elasticsearch
+      - riemann
 
 networks:
-
-  elk:
-driver: bridge
+  riemann:
+    driver: bridge
